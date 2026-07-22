@@ -26,7 +26,7 @@ class ReservasiController extends Controller
     {
         $request->validate([
             'lapangan_id'      => 'required|exists:lapangans,id',
-            'tanggal'         => 'required|date|after_or_equal:today', 
+            'tanggal'          => 'required|date|after_or_equal:today', 
             'jam_mulai'        => 'required',
             'durasi'           => 'required|integer|min:1|max:3',
             'nama_pemesan'     => 'required|string|max:255',
@@ -37,31 +37,34 @@ class ReservasiController extends Controller
         ], [
             'syarat_ketentuan.accepted' => 'Anda wajib menyetujui syarat dan ketentuan untuk melanjutkan.'
         ]);
+
         $waktuSekarang = Carbon::now('Asia/Jakarta');
         $tanggalHariIni = $waktuSekarang->toDateString();
         $lapangan = Lapangan::findOrFail($request->lapangan_id);
-        $durasi = (int) $request->durasi; 
         
         $jamMulai = Carbon::createFromFormat('H:i', $request->jam_mulai, 'Asia/Jakarta');
         $durasi = (int) $request->durasi; 
         $jamSelesai = (clone $jamMulai)->addHours($durasi);
 
         if ($request->tanggal === $tanggalHariIni) {
-        if ($jamMulai->toTimeString() <= $waktuSekarang->toTimeString()) {
-            return back()->withErrors(['jam_mulai' => 'Maaf, jam yang Anda pilih untuk hari ini sudah terlewat. Silakan pilih jam berikutnya.'])->withInput();
+            if ($jamMulai->toTimeString() <= $waktuSekarang->toTimeString()) {
+                return back()->withErrors(['jam_mulai' => 'Maaf, jam yang Anda pilih untuk hari ini sudah terlewat. Silakan pilih jam berikutnya.'])->withInput();
             }
         }
 
+        $jamMulaiStr = $jamMulai->toTimeString();
+        $jamSelesaiStr = $jamSelesai->toTimeString();
+
         $bentrok = Reservasi::where('lapangan_id', $request->lapangan_id)
             ->where('tanggal', $request->tanggal)
-            ->where('status', 'disetujui')
-            ->where(function($query) use ($jamMulai, $jamSelesai) {
-                $query->whereBetween('jam_mulai', [$jamMulai->toTimeString(), $jamSelesai->toTimeString()])
-                      ->orWhereBetween('jam_selesai', [$jamMulai->toTimeString(), $jamSelesai->toTimeString()]);
+            ->whereIn('status', ['disetujui', 'pending']) 
+            ->where(function($query) use ($jamMulaiStr, $jamSelesaiStr) {
+                $query->where('jam_mulai', '<', $jamSelesaiStr)
+                    ->where('jam_selesai', '>', $jamMulaiStr);
             })->exists();
 
         if ($bentrok) {
-            return back()->withErrors(['jam_mulai' => 'Maaf, slot jam pada tanggal tersebut sudah di-booking tim lain.'])->withInput();
+            return back()->withErrors(['jam_mulai' => 'Maaf, slot jam pada tanggal tersebut sedang dipesan atau sudah di-booking tim lain.'])->withInput();
         }
 
         $bookingData = [
@@ -69,8 +72,8 @@ class ReservasiController extends Controller
             'nama_lapangan' => $lapangan->nama_lapangan,
             'tarif_per_jam' => $lapangan->tarif_per_jam,
             'tanggal'       => $request->tanggal,
-            'jam_mulai'     => $jamMulai->toTimeString(),
-            'jam_selesai'   => $jamSelesai->toTimeString(),
+            'jam_mulai'     => $jamMulaiStr,
+            'jam_selesai'   => $jamSelesaiStr,
             'durasi'        => $durasi,
             'nama_pemesan'  => $request->nama_pemesan,
             'whatsapp'      => $request->whatsapp,

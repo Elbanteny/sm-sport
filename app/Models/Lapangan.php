@@ -17,8 +17,6 @@ class Lapangan extends Model
         'facilities' => 'array',
     ];
 
-    protected $appends = ['sedang_disewa'];
-
     public function reservasis()
     {
         return $this->hasMany(Reservasi::class, 'lapangan_id', 'id');

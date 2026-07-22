@@ -9,13 +9,20 @@ Schedule::call(function () {
     $tanggalHariIni = $sekarang->toDateString();
     $jamSekarang = $sekarang->toTimeString();
 
+    $sudahLewatWaktu = function ($query) use ($tanggalHariIni, $jamSekarang) {
+        $query->where('tanggal', '<', $tanggalHariIni)
+              ->orWhere(function ($q) use ($tanggalHariIni, $jamSekarang) {
+                  $q->where('tanggal', $tanggalHariIni)
+                    ->where('jam_selesai', '<=', $jamSekarang);
+              });
+    };
+
     Reservasi::where('status', 'disetujui')
-        ->where(function ($query) use ($tanggalHariIni, $jamSekarang) {
-            $query->where('tanggal', '<', $tanggalHariIni)
-                  ->orWhere(function ($q) use ($tanggalHariIni, $jamSekarang) {
-                      $q->where('tanggal', $tanggalHariIni)
-                        ->where('jam_selesai', '<=', $jamSekarang);
-                  });
-        })
+        ->where($sudahLewatWaktu)
         ->update(['status' => 'selesai']);
+
+    Reservasi::where('status', 'pending')
+        ->where($sudahLewatWaktu)
+        ->update(['status' => 'dibatalkan']);
+
 })->everyMinute();
