@@ -59,7 +59,7 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/sewa', [ReservasiController::class, 'indexAdmin'])->name('sewa');
         Route::put('/sewa/{id}/status', [ReservasiController::class, 'updateStatus'])->name('sewa.updateStatus');
-        Route::delete('/admin/sewa/{id}', [ReservasiController::class, 'destroy'])->name('admin.sewa.destroy');
+        Route::delete('/sewa/{id}', [ReservasiController::class, 'destroy'])->name('admin.sewa.destroy');
 
         Route::get('/profile', [AdminDashboardController::class, 'profile'])->name('profile');
         Route::put('/profile/update', [AdminDashboardController::class, 'updateProfile'])->name('profile.update');
